@@ -62,9 +62,18 @@ loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, value=1
 cb_person_cred_hist_length = st.number_input("Credit History Length", min_value=0, value=5, key="cred_input")
 credit_score = st.slider("Credit Score", 300, 850, 700, key="credit_input")
 
-loan_intent = st.selectbox("Loan Intent", ["NONE", "EDUCATION", "PERSONAL", "MEDICAL", "HOMEIMPROVEMENT", "VENTURE"])
-home_ownership = st.selectbox("Home Ownership", ["RENT", "OWN", "OTHER"])
-default_status = st.selectbox("Previous Loan Defaults on File", ["Yes", "No"])
+loan_intent = st.selectbox("Loan Intent", 
+                           ["NONE", "EDUCATION", "PERSONAL", "MEDICAL", "HOMEIMPROVEMENT", "VENTURE"], 
+                           key="loan_intent_input")
+
+home_ownership = st.selectbox("Home Ownership", 
+                              ["RENT", "OWN", "OTHER"], 
+                              key="home_ownership_input")
+
+default_status = st.selectbox("Previous Loan Defaults on File", 
+                              ["Yes", "No"], 
+                              key="default_status_input")
+
 
 if st.button("Predict"):
     # Fitur turunan

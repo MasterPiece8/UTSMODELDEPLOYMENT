@@ -43,7 +43,7 @@ def main():
     is_young = 1 if person_age < 25 else 0
 
     # One-hot encoding input (27 features)
-        input_data = [
+    input_data = [
         person_age,
         person_income,
         person_emp_exp,
@@ -84,6 +84,7 @@ def main():
         income_per_year_exp,
         is_young
     ]
+
 
     # Prediksi
     if st.button("Predict"):

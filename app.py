@@ -10,10 +10,10 @@ Original file is located at
 
 import streamlit as st
 import pickle
-import xgboost as xgb
 import pandas as pd
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import xgboost as xgb
 
+# Load model dan feature names
 with open("xgboost_best_model.pkl", "rb") as f:
     data = pickle.load(f)
     if isinstance(data, dict) and 'model' in data:
@@ -50,70 +50,192 @@ with open("xgboost_best_model.pkl", "rb") as f:
             'income_per_year_exp',
             'is_young'
         ]
-if __name__ == "__main__":
-    st.title("Loan Approval Prediction")
 
-    person_age = st.number_input("Age", min_value=18, max_value=100, value=25)
-    person_income = st.number_input("Annual Income", min_value=0, value=50000)
-    person_emp_exp = st.number_input("Years of Work Experience", min_value=0, value=5)
-    loan_amnt = st.number_input("Loan Amount", min_value=0, value=10000)
-    loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, value=12.5)
-    cb_person_cred_hist_length = st.number_input("Credit History Length", min_value=0, value=5)
-    credit_score = st.slider("Credit Score", 300, 850, 700)
+st.title("Loan Approval Prediction")
 
-    loan_intent = st.selectbox("Loan Intent", ["NONE", "EDUCATION", "PERSONAL", "MEDICAL", "HOMEIMPROVEMENT", "VENTURE"])
-    home_ownership = st.selectbox("Home Ownership", ["RENT", "OWN", "OTHER"])
-    default_status = st.selectbox("Previous Loan Defaults on File", ["Yes", "No"])
+# Input fields
+person_age = st.number_input("Age", min_value=18, max_value=100, value=25)
+person_income = st.number_input("Annual Income", min_value=0, value=50000)
+person_emp_exp = st.number_input("Years of Work Experience", min_value=0, value=5)
+loan_amnt = st.number_input("Loan Amount", min_value=0, value=10000)
+loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, value=12.5)
+cb_person_cred_hist_length = st.number_input("Credit History Length", min_value=0, value=5)
+credit_score = st.slider("Credit Score", 300, 850, 700)
 
-    if st.button("Predict"):
-        loan_percent_income = loan_amnt / (person_income + 1e-5)
-        income_per_year_exp = person_income / (person_emp_exp + 1e-5)
+loan_intent = st.selectbox("Loan Intent", ["NONE", "EDUCATION", "PERSONAL", "MEDICAL", "HOMEIMPROVEMENT", "VENTURE"])
+home_ownership = st.selectbox("Home Ownership", ["RENT", "OWN", "OTHER"])
+default_status = st.selectbox("Previous Loan Defaults on File", ["Yes", "No"])
 
+if st.button("Predict"):
+    # Fitur turunan
+    loan_percent_income = loan_amnt / (person_income + 1e-5)
+    income_per_year_exp = person_income / (person_emp_exp + 1e-5)
 
+    user_input = {
+        'person_age': person_age,
+        'person_income': person_income,
+        'person_emp_exp': person_emp_exp,
+        'loan_amnt': loan_amnt,
+        'loan_int_rate': loan_int_rate,
+        'loan_percent_income': loan_percent_income,
+        'cb_person_cred_hist_length': cb_person_cred_hist_length,
+        'credit_score': credit_score,
+        'person_gender_male': 1,
+        'person_gender_female': 0,
+        'person_education_Bachelor': 1,
+        'person_education_High School': 0,
+        'person_education_Master': 0,
+        'person_education_Doctorate': 0,
+        'person_home_ownership_RENT': int(home_ownership == "RENT"),
+        'person_home_ownership_OWN': int(home_ownership == "OWN"),
+        'person_home_ownership_OTHER': int(home_ownership == "OTHER"),
+        'loan_intent_EDUCATION': int(loan_intent == "EDUCATION"),
+        'loan_intent_PERSONAL': int(loan_intent in ["PERSONAL", "NONE"]),
+        'loan_intent_HOMEIMPROVEMENT': int(loan_intent == "HOMEIMPROVEMENT"),
+        'loan_intent_MEDICAL': int(loan_intent == "MEDICAL"),
+        'loan_intent_VENTURE': int(loan_intent == "VENTURE"),
+        'previous_loan_defaults_on_file_Yes': int(default_status == "Yes"),
+        'loan_to_income': loan_percent_income,
+        'income_per_year_exp': income_per_year_exp,
+        'is_young': int(person_age < 25)
+    }
 
-        user_input = {
-            'person_age': person_age,
-            'person_income': person_income,
-            'person_emp_exp': person_emp_exp,
-            'loan_amnt': loan_amnt,
-            'loan_int_rate': loan_int_rate,
-            'loan_percent_income': loan_percent_income,
-            'cb_person_cred_hist_length': cb_person_cred_hist_length,
-            'credit_score': credit_score,
-            'person_gender_male': 1,
-            'person_gender_female': 0,
-            'person_education_Bachelor': 1,
-            'person_education_High School': 0,
-            'person_education_Master': 0,
-            'person_education_Doctorate': 0,
-            'person_home_ownership_RENT': int(home_ownership == "RENT"),
-            'person_home_ownership_OWN': int(home_ownership == "OWN"),
-            'person_home_ownership_OTHER': int(home_ownership == "OTHER"),
-            'loan_intent_EDUCATION': int(loan_intent == "EDUCATION"),
-            'loan_intent_PERSONAL': int(loan_intent in ["PERSONAL", "NONE"]),
-            'loan_intent_HOMEIMPROVEMENT': int(loan_intent == "HOMEIMPROVEMENT"),
-            'loan_intent_MEDICAL': int(loan_intent == "MEDICAL"),
-            'loan_intent_VENTURE': int(loan_intent == "VENTURE"),
-            'previous_loan_defaults_on_file_Yes': int(default_status == "Yes"),
-            'previous_loan_defaults_on_file_No': int(default_status == "No"),
-            'loan_to_income': loan_percent_income,
-            'income_per_year_exp': income_per_year_exp,
-            'is_young': int(person_age < 25)
-        }
+    # Buat dataframe kosong dan isi sesuai urutan fitur
+    df = pd.DataFrame(columns=feature_names)
+    df.loc[0] = [0.0] * len(df.columns)
+    for key, val in user_input.items():
+        if key in df.columns:
+            df.at[0, key] = val
 
-        df = pd.DataFrame(columns=trainer.feature_names)
-        df.loc[0] = [0.0] * len(df.columns)
-        for key, val in user_input.items():
-            if key in df.columns:
-                df.at[0, key] = val
+    # Prediksi
+    prediction = model.predict(df)[0]
+    proba = model.predict_proba(df)[0]
 
-        prediction = trainer.model.predict(df)[0]
-        status = "Approved" if prediction == 1 else "Rejected"
-        st.success(f"The prediction is: {status}")
+    status = "Approved" if prediction == 1 else "Rejected"
+    st.success(f"The prediction is: {status}")
 
-        st.subheader("Debugging Info")
-        st.write("✅ User Input Dictionary:")
-        st.write(user_input)
+    # Debug info
+    st.subheader("Debug Info")
+    st.write("✅ Input Features:")
+    st.write(user_input)
+    st.write("✅ Class Probabilities:")
+    st.json({
+        "class_0 (DITOLAK)": round(float(proba[0]), 3),
+        "class_1 (DITERIMA)": round(float(proba[1]), 3)
+    })
+import streamlit as st
+import pickle
+import pandas as pd
+import xgboost as xgb
 
-        st.write("✅ Probabilitas Kelas:")
-        proba = trainer.model.predict_proba(df)[0]
+# Load model dan feature names
+with open("xgboost_best_model.pkl", "rb") as f:
+    data = pickle.load(f)
+    if isinstance(data, dict) and 'model' in data:
+        model = data['model']
+        feature_names = data['feature_names']
+    else:
+        model = data
+        # Set manual feature names jika tidak ada
+        feature_names = [
+            'person_age',
+            'person_income',
+            'person_emp_exp',
+            'loan_amnt',
+            'loan_int_rate',
+            'loan_percent_income',
+            'cb_person_cred_hist_length',
+            'credit_score',
+            'person_gender_female',
+            'person_gender_male',
+            'person_education_Bachelor',
+            'person_education_Doctorate',
+            'person_education_High School',
+            'person_education_Master',
+            'person_home_ownership_OTHER',
+            'person_home_ownership_OWN',
+            'person_home_ownership_RENT',
+            'loan_intent_EDUCATION',
+            'loan_intent_HOMEIMPROVEMENT',
+            'loan_intent_MEDICAL',
+            'loan_intent_PERSONAL',
+            'loan_intent_VENTURE',
+            'previous_loan_defaults_on_file_Yes',
+            'loan_to_income',
+            'income_per_year_exp',
+            'is_young'
+        ]
+
+st.title("Loan Approval Prediction")
+
+# Input fields
+person_age = st.number_input("Age", min_value=18, max_value=100, value=25)
+person_income = st.number_input("Annual Income", min_value=0, value=50000)
+person_emp_exp = st.number_input("Years of Work Experience", min_value=0, value=5)
+loan_amnt = st.number_input("Loan Amount", min_value=0, value=10000)
+loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, value=12.5)
+cb_person_cred_hist_length = st.number_input("Credit History Length", min_value=0, value=5)
+credit_score = st.slider("Credit Score", 300, 850, 700)
+
+loan_intent = st.selectbox("Loan Intent", ["NONE", "EDUCATION", "PERSONAL", "MEDICAL", "HOMEIMPROVEMENT", "VENTURE"])
+home_ownership = st.selectbox("Home Ownership", ["RENT", "OWN", "OTHER"])
+default_status = st.selectbox("Previous Loan Defaults on File", ["Yes", "No"])
+
+if st.button("Predict"):
+    # Fitur turunan
+    loan_percent_income = loan_amnt / (person_income + 1e-5)
+    income_per_year_exp = person_income / (person_emp_exp + 1e-5)
+
+    user_input = {
+        'person_age': person_age,
+        'person_income': person_income,
+        'person_emp_exp': person_emp_exp,
+        'loan_amnt': loan_amnt,
+        'loan_int_rate': loan_int_rate,
+        'loan_percent_income': loan_percent_income,
+        'cb_person_cred_hist_length': cb_person_cred_hist_length,
+        'credit_score': credit_score,
+        'person_gender_male': 1,
+        'person_gender_female': 0,
+        'person_education_Bachelor': 1,
+        'person_education_High School': 0,
+        'person_education_Master': 0,
+        'person_education_Doctorate': 0,
+        'person_home_ownership_RENT': int(home_ownership == "RENT"),
+        'person_home_ownership_OWN': int(home_ownership == "OWN"),
+        'person_home_ownership_OTHER': int(home_ownership == "OTHER"),
+        'loan_intent_EDUCATION': int(loan_intent == "EDUCATION"),
+        'loan_intent_PERSONAL': int(loan_intent in ["PERSONAL", "NONE"]),
+        'loan_intent_HOMEIMPROVEMENT': int(loan_intent == "HOMEIMPROVEMENT"),
+        'loan_intent_MEDICAL': int(loan_intent == "MEDICAL"),
+        'loan_intent_VENTURE': int(loan_intent == "VENTURE"),
+        'previous_loan_defaults_on_file_Yes': int(default_status == "Yes"),
+        'loan_to_income': loan_percent_income,
+        'income_per_year_exp': income_per_year_exp,
+        'is_young': int(person_age < 25)
+    }
+
+    # Buat dataframe kosong dan isi sesuai urutan fitur
+    df = pd.DataFrame(columns=feature_names)
+    df.loc[0] = [0.0] * len(df.columns)
+    for key, val in user_input.items():
+        if key in df.columns:
+            df.at[0, key] = val
+
+    # Prediksi
+    prediction = model.predict(df)[0]
+    proba = model.predict_proba(df)[0]
+
+    status = "Approved" if prediction == 1 else "Rejected"
+    st.success(f"The prediction is: {status}")
+
+    # Debug info
+    st.subheader("Debug Info")
+    st.write("✅ Input Features:")
+    st.write(user_input)
+    st.write("✅ Class Probabilities:")
+    st.json({
+        "class_0 (DITOLAK)": round(float(proba[0]), 3),
+        "class_1 (DITERIMA)": round(float(proba[1]), 3)
+    })
+

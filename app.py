@@ -11,6 +11,7 @@ Original file is located at
 import streamlit as st
 import pickle
 import xgboost as xgb
+import pandas as pd
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
 with open("xgboost_best_model.pkl", "rb") as f:

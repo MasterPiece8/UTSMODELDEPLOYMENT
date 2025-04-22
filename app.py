@@ -9,242 +9,70 @@ Original file is located at
 
 
 import streamlit as st
-import pickle
-import pandas as pd
-import xgboost as xgb
+import joblib
+import numpy as np
 
-# Load model dan feature names
-with open("xgboost_best_model.pkl", "rb") as f:
-    data = pickle.load(f)
-    if isinstance(data, dict) and 'model' in data:
-        model = data['model']
-        feature_names = data['feature_names']
-    else:
-        model = data
-        # Set manual feature names jika tidak ada
-        feature_names = [
-            'person_age',
-            'person_income',
-            'person_emp_exp',
-            'loan_amnt',
-            'loan_int_rate',
-            'loan_percent_income',
-            'cb_person_cred_hist_length',
-            'credit_score',
-            'person_gender_female',
-            'person_gender_male',
-            'person_education_Bachelor',
-            'person_education_Doctorate',
-            'person_education_High School',
-            'person_education_Master',
-            'person_home_ownership_OTHER',
-            'person_home_ownership_OWN',
-            'person_home_ownership_RENT',
-            'loan_intent_EDUCATION',
-            'loan_intent_HOMEIMPROVEMENT',
-            'loan_intent_MEDICAL',
-            'loan_intent_PERSONAL',
-            'loan_intent_VENTURE',
-            'previous_loan_defaults_on_file_Yes',
-            'loan_to_income',
-            'income_per_year_exp',
-            'is_young'
-        ]
+# Load model dari file .pkl
+def load_model(filename):
+    return joblib.load(filename)
 
-st.title("Loan Approval Prediction")
+# Fungsi prediksi
+def make_prediction(model, user_input):
+    prediction = model.predict([user_input])
+    return prediction[0]
 
-# Input fields
-person_age = st.number_input("Age", min_value=18, max_value=100, value=25, key="age_input")
-person_income = st.number_input("Annual Income", min_value=0, value=50000, key="income_input")
-person_emp_exp = st.number_input("Years of Work Experience", min_value=0, value=5, key="exp_input")
-loan_amnt = st.number_input("Loan Amount", min_value=0, value=10000, key="loan_input")
-loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, value=12.5, key="interest_input")
-cb_person_cred_hist_length = st.number_input("Credit History Length", min_value=0, value=5, key="cred_input")
-credit_score = st.slider("Credit Score", 300, 850, 700, key="credit_input")
+def main():
+    st.title("Loan Approval Prediction App")
 
-loan_intent = st.selectbox("Loan Intent", 
-                           ["NONE", "EDUCATION", "PERSONAL", "MEDICAL", "HOMEIMPROVEMENT", "VENTURE"], 
-                           key="loan_intent_input")
+    # Load model
+    model = load_model("xgboost_model.pkl")
 
-home_ownership = st.selectbox("Home Ownership", 
-                              ["RENT", "OWN", "OTHER"], 
-                              key="home_ownership_input")
+    # Input user
+    person_age = st.number_input("Age", min_value=18, max_value=100, value=30, key="age_input")
+    person_gender = st.selectbox("Gender", ["male", "female"], key="gender_input")
+    person_education = st.selectbox("Education Level", ["High School", "Associate", "Bachelor", "Master", "Doctorate"], key="edu_input")
+    person_income = st.number_input("Income", min_value=0.0, value=50000.0, key="income_input")
+    person_emp_exp = st.number_input("Employment Experience (Years)", min_value=0, max_value=50, value=5, key="exp_input")
+    loan_amnt = st.number_input("Loan Amount", min_value=1000, max_value=1000000, value=10000, key="loan_input")
+    loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, max_value=100.0, value=10.5, key="int_input")
+    loan_percent_income = st.number_input("Loan Percent of Income", min_value=0.0, max_value=1.0, value=0.2, key="percent_input")
+    cb_person_cred_hist_length = st.number_input("Credit History Length (Years)", min_value=0, max_value=100, value=5, key="hist_input")
+    credit_score = st.number_input("Credit Score", min_value=300, max_value=850, value=700, key="credit_input")
+    previous_loan_defaults_on_file = st.selectbox("Previous Loan Defaults on File", ["No", "Yes"], key="default_input")
+    loan_intent = st.selectbox("Loan Intent", ["DEBTCONSOLIDATION", "EDUCATION", "HOMEIMPROVEMENT", "MEDICAL", "PERSONAL", "VENTURE"], key="intent_input")
+    home_ownership = st.selectbox("Home Ownership", ["MORTGAGE", "OTHER", "OWN", "RENT"], key="home_input")
 
-default_status = st.selectbox("Previous Loan Defaults on File", 
-                              ["Yes", "No"], 
-                              key="default_status_input")
+    # Buat input sesuai urutan fitur yang dipakai oleh model
+    input_data = [
+        person_age,
+        1 if person_gender == "male" else 0,
+        ["High School", "Associate", "Bachelor", "Master", "Doctorate"].index(person_education),
+        person_income,
+        person_emp_exp,
+        loan_amnt,
+        loan_int_rate,
+        loan_percent_income,
+        cb_person_cred_hist_length,
+        credit_score,
+        1 if previous_loan_defaults_on_file == "Yes" else 0,
+        1 if loan_intent == "DEBTCONSOLIDATION" else 0,
+        1 if loan_intent == "EDUCATION" else 0,
+        1 if loan_intent == "HOMEIMPROVEMENT" else 0,
+        1 if loan_intent == "MEDICAL" else 0,
+        1 if loan_intent == "PERSONAL" else 0,
+        1 if loan_intent == "VENTURE" else 0,
+        1 if home_ownership == "MORTGAGE" else 0,
+        1 if home_ownership == "OTHER" else 0,
+        1 if home_ownership == "OWN" else 0,
+        1 if home_ownership == "RENT" else 0,
+    ]
 
+    # Tampilkan hasil prediksi
+    if st.button("Predict"):
+        prediction = make_prediction(model, input_data)
+        st.success(f"The prediction is: {'Approved' if prediction == 1 else 'Not Approved'}")
 
-if st.button("Predict"):
-    # Fitur turunan
-    loan_percent_income = loan_amnt / (person_income + 1e-5)
-    income_per_year_exp = person_income / (person_emp_exp + 1e-5)
+if __name__ == "__main__":
+    main()
 
-    user_input = {
-        'person_age': person_age,
-        'person_income': person_income,
-        'person_emp_exp': person_emp_exp,
-        'loan_amnt': loan_amnt,
-        'loan_int_rate': loan_int_rate,
-        'loan_percent_income': loan_percent_income,
-        'cb_person_cred_hist_length': cb_person_cred_hist_length,
-        'credit_score': credit_score,
-        'person_gender_male': 1,
-        'person_gender_female': 0,
-        'person_education_Bachelor': 1,
-        'person_education_High School': 0,
-        'person_education_Master': 0,
-        'person_education_Doctorate': 0,
-        'person_home_ownership_RENT': int(home_ownership == "RENT"),
-        'person_home_ownership_OWN': int(home_ownership == "OWN"),
-        'person_home_ownership_OTHER': int(home_ownership == "OTHER"),
-        'loan_intent_EDUCATION': int(loan_intent == "EDUCATION"),
-        'loan_intent_PERSONAL': int(loan_intent in ["PERSONAL", "NONE"]),
-        'loan_intent_HOMEIMPROVEMENT': int(loan_intent == "HOMEIMPROVEMENT"),
-        'loan_intent_MEDICAL': int(loan_intent == "MEDICAL"),
-        'loan_intent_VENTURE': int(loan_intent == "VENTURE"),
-        'previous_loan_defaults_on_file_Yes': int(default_status == "Yes"),
-        'loan_to_income': loan_percent_income,
-        'income_per_year_exp': income_per_year_exp,
-        'is_young': int(person_age < 25)
-    }
-
-    # Buat dataframe kosong dan isi sesuai urutan fitur
-    df = pd.DataFrame(columns=feature_names)
-    df.loc[0] = [0.0] * len(df.columns)
-    for key, val in user_input.items():
-        if key in df.columns:
-            df.at[0, key] = val
-
-    # Prediksi
-    prediction = model.predict(df)[0]
-    proba = model.predict_proba(df)[0]
-
-    status = "Approved" if prediction == 1 else "Rejected"
-    st.success(f"The prediction is: {status}")
-
-    # Debug info
-    st.subheader("Debug Info")
-    st.write("✅ Input Features:")
-    st.write(user_input)
-    st.write("✅ Class Probabilities:")
-    st.json({
-        "class_0 (DITOLAK)": round(float(proba[0]), 3),
-        "class_1 (DITERIMA)": round(float(proba[1]), 3)
-    })
-import streamlit as st
-import pickle
-import pandas as pd
-import xgboost as xgb
-
-# Load model dan feature names
-with open("xgboost_best_model.pkl", "rb") as f:
-    data = pickle.load(f)
-    if isinstance(data, dict) and 'model' in data:
-        model = data['model']
-        feature_names = data['feature_names']
-    else:
-        model = data
-        # Set manual feature names jika tidak ada
-        feature_names = [
-            'person_age',
-            'person_income',
-            'person_emp_exp',
-            'loan_amnt',
-            'loan_int_rate',
-            'loan_percent_income',
-            'cb_person_cred_hist_length',
-            'credit_score',
-            'person_gender_female',
-            'person_gender_male',
-            'person_education_Bachelor',
-            'person_education_Doctorate',
-            'person_education_High School',
-            'person_education_Master',
-            'person_home_ownership_OTHER',
-            'person_home_ownership_OWN',
-            'person_home_ownership_RENT',
-            'loan_intent_EDUCATION',
-            'loan_intent_HOMEIMPROVEMENT',
-            'loan_intent_MEDICAL',
-            'loan_intent_PERSONAL',
-            'loan_intent_VENTURE',
-            'previous_loan_defaults_on_file_Yes',
-            'loan_to_income',
-            'income_per_year_exp',
-            'is_young'
-        ]
-
-st.title("Loan Approval Prediction")
-
-# Input fields
-person_age = st.number_input("Age", min_value=18, max_value=100, value=25)
-person_income = st.number_input("Annual Income", min_value=0, value=50000)
-person_emp_exp = st.number_input("Years of Work Experience", min_value=0, value=5)
-loan_amnt = st.number_input("Loan Amount", min_value=0, value=10000)
-loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, value=12.5)
-cb_person_cred_hist_length = st.number_input("Credit History Length", min_value=0, value=5)
-credit_score = st.slider("Credit Score", 300, 850, 700)
-
-loan_intent = st.selectbox("Loan Intent", ["NONE", "EDUCATION", "PERSONAL", "MEDICAL", "HOMEIMPROVEMENT", "VENTURE"])
-home_ownership = st.selectbox("Home Ownership", ["RENT", "OWN", "OTHER"])
-default_status = st.selectbox("Previous Loan Defaults on File", ["Yes", "No"])
-
-if st.button("Predict"):
-    # Fitur turunan
-    loan_percent_income = loan_amnt / (person_income + 1e-5)
-    income_per_year_exp = person_income / (person_emp_exp + 1e-5)
-
-    user_input = {
-        'person_age': person_age,
-        'person_income': person_income,
-        'person_emp_exp': person_emp_exp,
-        'loan_amnt': loan_amnt,
-        'loan_int_rate': loan_int_rate,
-        'loan_percent_income': loan_percent_income,
-        'cb_person_cred_hist_length': cb_person_cred_hist_length,
-        'credit_score': credit_score,
-        'person_gender_male': 1,
-        'person_gender_female': 0,
-        'person_education_Bachelor': 1,
-        'person_education_High School': 0,
-        'person_education_Master': 0,
-        'person_education_Doctorate': 0,
-        'person_home_ownership_RENT': int(home_ownership == "RENT"),
-        'person_home_ownership_OWN': int(home_ownership == "OWN"),
-        'person_home_ownership_OTHER': int(home_ownership == "OTHER"),
-        'loan_intent_EDUCATION': int(loan_intent == "EDUCATION"),
-        'loan_intent_PERSONAL': int(loan_intent in ["PERSONAL", "NONE"]),
-        'loan_intent_HOMEIMPROVEMENT': int(loan_intent == "HOMEIMPROVEMENT"),
-        'loan_intent_MEDICAL': int(loan_intent == "MEDICAL"),
-        'loan_intent_VENTURE': int(loan_intent == "VENTURE"),
-        'previous_loan_defaults_on_file_Yes': int(default_status == "Yes"),
-        'loan_to_income': loan_percent_income,
-        'income_per_year_exp': income_per_year_exp,
-        'is_young': int(person_age < 25)
-    }
-
-    # Buat dataframe kosong dan isi sesuai urutan fitur
-    df = pd.DataFrame(columns=feature_names)
-    df.loc[0] = [0.0] * len(df.columns)
-    for key, val in user_input.items():
-        if key in df.columns:
-            df.at[0, key] = val
-
-    # Prediksi
-    prediction = model.predict(df)[0]
-    proba = model.predict_proba(df)[0]
-
-    status = "Approved" if prediction == 1 else "Rejected"
-    st.success(f"The prediction is: {status}")
-
-    # Debug info
-    st.subheader("Debug Info")
-    st.write("✅ Input Features:")
-    st.write(user_input)
-    st.write("✅ Class Probabilities:")
-    st.json({
-        "class_0 (DITOLAK)": round(float(proba[0]), 3),
-        "class_1 (DITERIMA)": round(float(proba[1]), 3)
-    })
 

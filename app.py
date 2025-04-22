@@ -25,7 +25,7 @@ def main():
     st.title("Loan Approval Prediction App")
 
     # Load model
-    model = load_model("xgboost_model.pkl")
+    model = load_model("xgboost_best_model.pkl")
 
     # Input user
     person_age = st.number_input("Age", min_value=18, max_value=100, value=30, key="age_input")

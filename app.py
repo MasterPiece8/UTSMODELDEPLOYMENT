@@ -54,13 +54,13 @@ with open("xgboost_best_model.pkl", "rb") as f:
 st.title("Loan Approval Prediction")
 
 # Input fields
-person_age = st.number_input("Age", min_value=18, max_value=100, value=25)
-person_income = st.number_input("Annual Income", min_value=0, value=50000)
-person_emp_exp = st.number_input("Years of Work Experience", min_value=0, value=5)
-loan_amnt = st.number_input("Loan Amount", min_value=0, value=10000)
-loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, value=12.5)
-cb_person_cred_hist_length = st.number_input("Credit History Length", min_value=0, value=5)
-credit_score = st.slider("Credit Score", 300, 850, 700)
+person_age = st.number_input("Age", min_value=18, max_value=100, value=25, key="age_input")
+person_income = st.number_input("Annual Income", min_value=0, value=50000, key="income_input")
+person_emp_exp = st.number_input("Years of Work Experience", min_value=0, value=5, key="exp_input")
+loan_amnt = st.number_input("Loan Amount", min_value=0, value=10000, key="loan_input")
+loan_int_rate = st.number_input("Loan Interest Rate (%)", min_value=0.0, value=12.5, key="interest_input")
+cb_person_cred_hist_length = st.number_input("Credit History Length", min_value=0, value=5, key="cred_input")
+credit_score = st.slider("Credit Score", 300, 850, 700, key="credit_input")
 
 loan_intent = st.selectbox("Loan Intent", ["NONE", "EDUCATION", "PERSONAL", "MEDICAL", "HOMEIMPROVEMENT", "VENTURE"])
 home_ownership = st.selectbox("Home Ownership", ["RENT", "OWN", "OTHER"])

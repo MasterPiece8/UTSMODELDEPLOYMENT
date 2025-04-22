@@ -43,7 +43,7 @@ def main():
     is_young = 1 if person_age < 25 else 0
 
     # One-hot encoding input (27 features)
-    input_data = [
+        input_data = [
         person_age,
         person_income,
         person_emp_exp,
@@ -57,7 +57,8 @@ def main():
         1 if person_gender == "male" else 0,
         1 if person_gender == "female" else 0,
 
-        # Education one-hot
+        # Education one-hot (5 fitur)
+        1 if person_education == "Associate" else 0,
         1 if person_education == "Bachelor" else 0,
         1 if person_education == "Doctorate" else 0,
         1 if person_education == "High School" else 0,
@@ -75,10 +76,10 @@ def main():
         1 if loan_intent == "PERSONAL" else 0,
         1 if loan_intent == "VENTURE" else 0,
 
-        # Previous loan defaults
+        # Previous loan default
         1 if previous_loan_defaults_on_file == "Yes" else 0,
 
-        # Feature engineering
+        # Engineered features
         loan_percent_income,
         income_per_year_exp,
         is_young
